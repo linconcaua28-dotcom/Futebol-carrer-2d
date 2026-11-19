@@ -29,16 +29,16 @@ jobs:
 
       - name: Preparar arquivos do projeto
         run: |
-          mkdir -p app_work
+          mkdir -p /tmp/app_work
           if ls *.zip 1> /dev/null 2>&1; then
-            mkdir -p extracted
-            unzip -q *.zip -d extracted
-            PKG_DIR=$(dirname "$(find extracted -name "package.json" | head -n 1)")
-            cp -r "$PKG_DIR"/. app_work/
+            mkdir -p /tmp/extracted
+            unzip -q *.zip -d /tmp/extracted
+            PKG_DIR=$(dirname "$(find /tmp/extracted -name "package.json" | head -n 1)")
           else
             PKG_DIR=$(dirname "$(find . -maxdepth 3 -name "package.json" | head -n 1)")
-            cp -r "$PKG_DIR"/. app_work/
           fi
+          cp -r "$PKG_DIR"/. /tmp/app_work/
+          mv /tmp/app_work app_work
 
       - name: Instalar dependências
         working-directory: app_work
