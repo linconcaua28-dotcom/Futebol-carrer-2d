@@ -16,7 +16,7 @@ jobs:
       - name: Configurar Node
         uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: '20'
 
       - name: Configurar Java
         uses: actions/setup-java@v4
@@ -27,36 +27,46 @@ jobs:
       - name: Configurar Android
         uses: android-actions/setup-android@v4
 
-      - name: Extrair projeto
+      - name: Preparar arquivos do projeto
         run: |
-          mkdir -p extracted app
-          unzip -q *.zip -d extracted
-          PKG_DIR=$(dirname "$(find extracted -name "package.json" | head -n 1)")
-          cp -r "$PKG_DIR"/. app/
+          mkdir -p app_work
+          if ls *.zip 1> /dev/null 2>&1; then
+            mkdir -p extracted
+            unzip -q *.zip -d extracted
+            PKG_DIR=$(dirname "$(find extracted -name "package.json" | head -n 1)")
+            cp -r "$PKG_DIR"/. app_work/
+          else
+            PKG_DIR=$(dirname "$(find . -maxdepth 3 -name "package.json" | head -n 1)")
+            cp -r "$PKG_DIR"/. app_work/
+          fi
 
       - name: Instalar dependências
-        working-directory: app
+        working-directory: app_work
         run: npm install
 
-      - name: Criar Android
-        working-directory: app
-        run: npx cap add android
+      - name: Gerar build web (se existir script build)
+        working-directory: app_work
+        run: npm run build --if-present
 
-      - name: Sincronizar
-        working-directory: app
-        run: npx cap sync android
+      - name: Configurar e sincronizar Capacitor Android
+        working-directory: app_work
+        run: |
+          if [ ! -d "android" ]; then
+            npx cap add android
+          fi
+          npx cap sync android
 
       - name: Dar permissão ao Gradle
-        working-directory: app/android
+        working-directory: app_work/android
         run: chmod +x gradlew
 
       - name: Compilar APK
-        working-directory: app/android
+        working-directory: app_work/android
         run: ./gradlew assembleDebug
 
       - name: Salvar APK
         uses: actions/upload-artifact@v4
         with:
           name: Carreira2D-APK
-          path: app/android/app/build/outputs/apk/debug/*.apk
+          path: app_work/android/app/build/outputs/apk/debug/*.apk
           
