@@ -3,50 +3,64 @@ name: Gerar APK Carreira 2D
 on:
   workflow_dispatch:
   push:
-    branches: [ main ]
+    branches:
+      - main
+      - master
+
+permissions:
+  contents: read
 
 jobs:
   build:
+    name: Compilar aplicativo Android
     runs-on: ubuntu-latest
-
     steps:
-      - name: Baixar projeto
+      - name: Baixar código do repositório
         uses: actions/checkout@v4
 
-      - name: Configurar Java
+      - name: Encontrar a pasta do projeto
+        shell: bash
+        run: |
+          if [ -f "settings.gradle" ] && [ -f "app/build.gradle" ]; then
+            echo "PROJECT_DIR=." >> "$GITHUB_ENV"
+          elif [ -f "Carreira2D/settings.gradle" ] && [ -f "Carreira2D/app/build.gradle" ]; then
+            echo "PROJECT_DIR=Carreira2D" >> "$GITHUB_ENV"
+          else
+            echo "ERRO: Não encontrei settings.gradle e app/build.gradle."
+            echo "Envie o CONTEÚDO da pasta Carreira2D para a raiz do repositório."
+            find . -maxdepth 3 -type f | sort | head -200
+            exit 1
+          fi
+
+      - name: Configurar Java 17
         uses: actions/setup-java@v4
         with:
           distribution: temurin
           java-version: '17'
 
       - name: Configurar Android SDK
-        uses: android-actions/setup-android@v4
+        uses: android-actions/setup-android@v3
 
-      - name: Configurar Gradle
+      - name: Instalar plataforma e ferramentas Android
+        shell: bash
+        run: |
+          yes | sdkmanager --licenses >/dev/null || true
+          sdkmanager "platform-tools" "platforms;android-35" "build-tools;35.0.0"
+
+      - name: Configurar Gradle 8.9
         uses: gradle/actions/setup-gradle@v4
         with:
-          gradle-version: '8.7'
-
-      - name: Preparar pasta do projeto Android
-        run: |
-          mkdir -p /tmp/android_proj
-          if ls *.zip 1> /dev/null 2>&1; then
-            mkdir -p /tmp/extracted
-            unzip -q *.zip -d /tmp/extracted
-            PROJ_DIR=$(dirname "$(find /tmp/extracted -name "settings.gradle" | head -n 1)")
-          else
-            PROJ_DIR=$(dirname "$(find . -maxdepth 3 -name "settings.gradle" | head -n 1)")
-          fi
-          cp -r "$PROJ_DIR"/. /tmp/android_proj/
-          mv /tmp/android_proj android_proj
+          gradle-version: '8.9'
 
       - name: Compilar APK
-        working-directory: android_proj
-        run: gradle assembleDebug
+        shell: bash
+        run: gradle -p "$PROJECT_DIR" --no-daemon assembleDebug
 
-      - name: Salvar APK
+      - name: Publicar APK para download
         uses: actions/upload-artifact@v4
         with:
           name: Carreira2D-APK
-          path: android_proj/app/build/outputs/apk/debug/*.apk
+          path: ${{ env.PROJECT_DIR }}/app/build/outputs/apk/debug/app-debug.apk
+          if-no-files-found: error
+          retention-days: 14
           
