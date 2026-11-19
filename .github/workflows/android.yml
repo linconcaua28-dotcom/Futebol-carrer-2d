@@ -1,8 +1,9 @@
-
 name: Gerar APK Carreira 2D
 
 on:
   workflow_dispatch:
+  push:
+    branches: [ main ]
 
 jobs:
   build:
@@ -12,20 +13,50 @@ jobs:
       - name: Baixar projeto
         uses: actions/checkout@v4
 
+      - name: Configurar Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
       - name: Configurar Java
         uses: actions/setup-java@v4
         with:
           distribution: temurin
-          java-version: 17
+          java-version: '17'
+
+      - name: Configurar Android
+        uses: android-actions/setup-android@v4
+
+      - name: Extrair projeto
+        run: |
+          mkdir -p extracted app
+          unzip -q *.zip -d extracted
+          PKG_DIR=$(dirname "$(find extracted -name "package.json" | head -n 1)")
+          cp -r "$PKG_DIR"/. app/
+
+      - name: Instalar dependências
+        working-directory: app
+        run: npm install
+
+      - name: Criar Android
+        working-directory: app
+        run: npx cap add android
+
+      - name: Sincronizar
+        working-directory: app
+        run: npx cap sync android
 
       - name: Dar permissão ao Gradle
+        working-directory: app/android
         run: chmod +x gradlew
 
       - name: Compilar APK
+        working-directory: app/android
         run: ./gradlew assembleDebug
 
       - name: Salvar APK
         uses: actions/upload-artifact@v4
         with:
           name: Carreira2D-APK
-          path: app/build/outputs/apk/debug/*.apk
+          path: app/android/app/build/outputs/apk/debug/*.apk
+          
