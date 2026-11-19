@@ -1,5 +1,5 @@
 
-name: Build APK Android 16
+name: Build Futebol Carreira 2D APK
 
 on:
   workflow_dispatch:
@@ -16,42 +16,45 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Baixar projeto
+      - name: Baixar arquivos
         uses: actions/checkout@v4
 
-      - name: Configurar Java 17
+      - name: Instalar Java
         uses: actions/setup-java@v4
         with:
           distribution: temurin
           java-version: '17'
 
-      - name: Configurar Android SDK
+      - name: Configurar Android
         uses: android-actions/setup-android@v3
+
+      - name: Instalar SDK Android 36
+        run: |
+          sdkmanager --install "platform-tools"
+          sdkmanager --install "platforms;android-36"
+          sdkmanager --install "build-tools;36.0.0"
 
       - name: Configurar Gradle
         uses: gradle/actions/setup-gradle@v4
         with:
           gradle-version: '8.11.1'
 
-      - name: Instalar Android SDK 36
+      - name: Verificar projeto
         run: |
-          yes | sdkmanager --licenses || true
-          sdkmanager "platform-tools" "platforms;android-36" "build-tools;36.0.0"
-
-      - name: Verificar arquivos
-        run: |
+          pwd
           ls -la
           test -f settings.gradle
+          test -f build.gradle
           test -f app/build.gradle
-          test -f app/src/main/AndroidManifest.xml
 
       - name: Compilar APK
-        run: gradle --no-daemon clean assembleDebug
+        run: |
+          gradle --no-daemon clean assembleDebug --stacktrace
 
-      - name: Salvar APK
+      - name: Disponibilizar APK
         uses: actions/upload-artifact@v4
         with:
-          name: FutebolCarreira2D-APK
+          name: Futebol-Carreira-2D
           path: app/build/outputs/apk/debug/app-debug.apk
           if-no-files-found: error
           
