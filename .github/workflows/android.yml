@@ -13,60 +13,40 @@ jobs:
       - name: Baixar projeto
         uses: actions/checkout@v4
 
-      - name: Configurar Node
-        uses: actions/setup-node@v4
-        with:
-          node-version: '20'
-
       - name: Configurar Java
         uses: actions/setup-java@v4
         with:
           distribution: temurin
           java-version: '17'
 
-      - name: Configurar Android
+      - name: Configurar Android SDK
         uses: android-actions/setup-android@v4
 
-      - name: Preparar arquivos do projeto
+      - name: Configurar Gradle
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.7'
+
+      - name: Preparar pasta do projeto Android
         run: |
-          mkdir -p /tmp/app_work
+          mkdir -p /tmp/android_proj
           if ls *.zip 1> /dev/null 2>&1; then
             mkdir -p /tmp/extracted
             unzip -q *.zip -d /tmp/extracted
-            PKG_DIR=$(dirname "$(find /tmp/extracted -name "package.json" | head -n 1)")
+            PROJ_DIR=$(dirname "$(find /tmp/extracted -name "settings.gradle" | head -n 1)")
           else
-            PKG_DIR=$(dirname "$(find . -maxdepth 3 -name "package.json" | head -n 1)")
+            PROJ_DIR=$(dirname "$(find . -maxdepth 3 -name "settings.gradle" | head -n 1)")
           fi
-          cp -r "$PKG_DIR"/. /tmp/app_work/
-          mv /tmp/app_work app_work
-
-      - name: Instalar dependências
-        working-directory: app_work
-        run: npm install
-
-      - name: Gerar build web (se existir script build)
-        working-directory: app_work
-        run: npm run build --if-present
-
-      - name: Configurar e sincronizar Capacitor Android
-        working-directory: app_work
-        run: |
-          if [ ! -d "android" ]; then
-            npx cap add android
-          fi
-          npx cap sync android
-
-      - name: Dar permissão ao Gradle
-        working-directory: app_work/android
-        run: chmod +x gradlew
+          cp -r "$PROJ_DIR"/. /tmp/android_proj/
+          mv /tmp/android_proj android_proj
 
       - name: Compilar APK
-        working-directory: app_work/android
-        run: ./gradlew assembleDebug
+        working-directory: android_proj
+        run: gradle assembleDebug
 
       - name: Salvar APK
         uses: actions/upload-artifact@v4
         with:
           name: Carreira2D-APK
-          path: app_work/android/app/build/outputs/apk/debug/*.apk
+          path: android_proj/app/build/outputs/apk/debug/*.apk
           
